@@ -4,3 +4,5 @@ application/dist
 application/.env
 application/app_creation
 application/__pycache__
+application/token.json
+application/build.spec
