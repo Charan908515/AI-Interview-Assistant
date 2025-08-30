@@ -1,13 +1,14 @@
 from pydantic import BaseModel
 from datetime import datetime
+from typing import Union
 
 class PaymentCreate(BaseModel):
-    amount: int
+    amount: Union[int, float]
 
 class PaymentOut(BaseModel):
     id: int
     user_id: int
-    amount: int
+    amount: Union[int, float]
     status: str
     timestamp: datetime
 
