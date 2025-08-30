@@ -6,7 +6,7 @@ from app.core.auth import hash_password, verify_password
 
 def create_user(db: Session, user: UserCreate):
     hashed_pw = hash_password(user.password)
-    db_user = User(username=user.username, email=user.email, password=hashed_pw)
+    db_user = User(username=user.username, email=user.email, password=hashed_pw, is_admin=user.is_admin, credits=user.credits, is_active=user.is_active)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)

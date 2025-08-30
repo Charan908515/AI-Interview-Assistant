@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from app.db.session import get_db
-from app.core.deps import get_current_admin
+from app.database.connection import get_db
+from app.core.dependencies import get_current_admin
 from app.models.user import User
 from app.models.payment import Payment
 

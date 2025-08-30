@@ -12,4 +12,4 @@ class Payment(Base):
     status = Column(String(50), default="pending")  # pending, completed, failed
     timestamp = Column(DateTime, default=datetime.utcnow)
     
-    user = relationship("User", backref="payments")
+    user = relationship("User", back_populates="payments")

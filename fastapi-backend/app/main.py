@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from app.routes import auth, credits, payments, transcription, ai_responses
 from app.database.connection import Base, engine
-
+from app.routes import admins
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -20,6 +20,7 @@ Base.metadata.create_all(bind=engine)
 
 
 # Routers
+app.include_router(admins.router , prefix="/admin", tags=["admin"])
 app.include_router(auth.router, prefix="/auth", tags=["auth"])
 app.include_router(credits.router, prefix="/credits", tags=["credits"])
 app.include_router(payments.router, prefix="/payments", tags=["payments"])
