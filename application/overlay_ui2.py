@@ -5,7 +5,7 @@ import ctypes
 from queue import Queue
 from PyQt5.QtWidgets import (
     QApplication, QWidget, QLabel, QVBoxLayout, QHBoxLayout,
-    QSizePolicy, QFrame, QPushButton
+    QSizePolicy, QFrame, QPushButton, QScrollArea, QTextEdit
 )
 from PyQt5.QtCore import Qt, QTimer, QPropertyAnimation, QEasingCurve, QRect
 from PyQt5.QtGui import QFont
@@ -31,37 +31,128 @@ class FloatingOverlay(QWidget):
 
     def _setup_window(self):
         screen_geometry = QApplication.primaryScreen().geometry()
-        self.initial_height = 240
+        self.initial_height = 280
+        self.max_height = 600
         self.setGeometry(0, 50, screen_geometry.width(), self.initial_height)
         self.setMinimumHeight(self.initial_height)
-        self.setWindowTitle("Private Overlay")
+        self.setMaximumHeight(self.max_height)
+        self.setWindowTitle("AI Interview Assistant")
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_TransparentForMouseEvents, False)
 
     def init_ui(self):
         self.container = QWidget(self)
-        self.container.setStyleSheet("background-color: rgba(20, 30, 55, 230); border-radius: 12px;")
+        self.container.setStyleSheet("""
+            background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                stop:0 rgba(45, 55, 72, 240), stop:1 rgba(26, 32, 44, 240));
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        """)
 
         main_layout = QHBoxLayout(self.container)
-        main_layout.setContentsMargins(20, 15, 15, 15)
-        main_layout.setSpacing(15)
+        main_layout.setContentsMargins(25, 20, 20, 20)
+        main_layout.setSpacing(20)
 
         qa_layout = QVBoxLayout()
-        qa_layout.setSpacing(10)
+        qa_layout.setSpacing(15)
+        
+        # Question section with scroll area (fixed height)
+        question_section = QVBoxLayout()
+        question_header = QHBoxLayout()
+        
+        q_prefix = QLabel("Q:")
+        q_prefix.setStyleSheet("""
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 #667eea, stop:1 #764ba2);
+            color: white;
+            font-family: 'Segoe UI';
+            font-size: 13pt;
+            font-weight: 700;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-right: 10px;
+        """)
+        q_prefix.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
+        
+        self.question_scroll = QScrollArea()
+        self.question_scroll.setFixedHeight(80)
+        self.question_scroll.setWidgetResizable(True)
+        self.question_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.question_scroll.setVerticalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self.question_scroll.setStyleSheet("""
+            QScrollArea {
+                background: transparent;
+                border: none;
+            }
+            QScrollBar:vertical {
+                background: rgba(255, 255, 255, 0.1);
+                width: 8px;
+                border-radius: 4px;
+            }
+            QScrollBar::handle:vertical {
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 4px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: rgba(255, 255, 255, 0.5);
+            }
+        """)
+        
         self.question_label = QLabel("Listening...")
         self.question_label.setWordWrap(True)
+        self.question_label.setStyleSheet("""
+            background-color: transparent; 
+            color: #F7FAFC; 
+            font-family: 'Segoe UI';
+            font-size: 12pt; 
+            line-height: 1.4;
+            padding: 10px;
+        """)
+        self.question_scroll.setWidget(self.question_label)
+        
+        question_header.addWidget(q_prefix)
+        question_header.addWidget(self.question_scroll)
+        question_section.addLayout(question_header)
+        
+        # Answer section (expandable)
+        answer_section = QVBoxLayout()
+        answer_header = QHBoxLayout()
+        
+        a_prefix = QLabel("A:")
+        a_prefix.setStyleSheet("""
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 #667eea, stop:1 #764ba2);
+            color: white;
+            font-family: 'Segoe UI';
+            font-size: 13pt;
+            font-weight: 700;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-right: 10px;
+        """)
+        a_prefix.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
+        
         self.answer_label = QLabel("...")
         self.answer_label.setWordWrap(True)
-        self.question_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
         self.answer_label.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
-
-        label_style = "background-color: transparent; color: #EAEAEA; font-family: Segoe UI;"
-        self.question_label.setStyleSheet(f"{label_style} font-size: 10pt;")
-        self.answer_label.setStyleSheet(f"{label_style} font-size: 11pt; font-weight: 600;")
+        self.answer_label.setStyleSheet("""
+            background-color: transparent; 
+            color: #F7FAFC; 
+            font-family: 'Segoe UI';
+            font-size: 13pt; 
+            font-weight: 600; 
+            line-height: 1.5;
+            padding: 10px;
+        """)
         
-        qa_layout.addLayout(self._create_labeled_layout("Q:", self.question_label))
-        qa_layout.addLayout(self._create_labeled_layout("A:", self.answer_label))
+        answer_header.addWidget(a_prefix)
+        answer_header.addWidget(self.answer_label)
+        answer_section.addLayout(answer_header)
+        
+        qa_layout.addLayout(question_section)
+        qa_layout.addLayout(answer_section)
 
         control_layout = QVBoxLayout()
         control_layout.setSpacing(10)
@@ -75,42 +166,72 @@ class FloatingOverlay(QWidget):
         self.status_icon_label.setFont(QFont("Segoe UI Emoji", 32))
         self.status_icon_label.setAlignment(Qt.AlignCenter)
         
-        self.process_button = QPushButton("Get Answer")
+        self.process_button = QPushButton("🤖 Get Answer")
         self.process_button.setCursor(Qt.PointingHandCursor)
         self.process_button.setStyleSheet("""
             QPushButton {
-                background-color: #4A90E2; color: white; border: none;
-                border-radius: 5px; padding: 10px 15px;
-                font-family: 'Segoe UI'; font-size: 10pt; font-weight: bold;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #667eea, stop:1 #764ba2);
+                color: white; border: none;
+                border-radius: 10px; padding: 12px 18px;
+                font-family: 'Segoe UI'; font-size: 11pt; font-weight: bold;
+                border: 1px solid rgba(255, 255, 255, 0.2);
             }
-            QPushButton:hover { background-color: #5B9EE5; }
-            QPushButton:pressed { background-color: #3A8ADB; }
+            QPushButton:hover { 
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #7c8ce8, stop:1 #8a5fb0);
+                transform: translateY(-1px);
+            }
+            QPushButton:pressed { 
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #5a6fd8, stop:1 #6b4394);
+            }
         """)
         self.process_button.clicked.connect(self.on_process_click)
 
-        self.capture_button = QPushButton("Capture Screen")
+        self.capture_button = QPushButton("📸 Capture Screen")
         self.capture_button.setCursor(Qt.PointingHandCursor)
         self.capture_button.setStyleSheet("""
             QPushButton {
-                background-color: #3B9D7E; color: white; border: none;
-                border-radius: 5px; padding: 10px 15px;
-                font-family: 'Segoe UI'; font-size: 10pt; font-weight: bold;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #56ab2f, stop:1 #a8e6cf);
+                color: white; border: none;
+                border-radius: 10px; padding: 12px 18px;
+                font-family: 'Segoe UI'; font-size: 11pt; font-weight: bold;
+                border: 1px solid rgba(255, 255, 255, 0.2);
             }
-            QPushButton:hover { background-color: #4CB591; }
-            QPushButton:pressed { background-color: #2A8C6B; }
+            QPushButton:hover { 
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #6bc23f, stop:1 #b8f0d7);
+                transform: translateY(-1px);
+            }
+            QPushButton:pressed { 
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #4b9a27, stop:1 #98dcc7);
+            }
         """)
         self.capture_button.clicked.connect(self.on_capture_click)
 
-        self.stop_button = QPushButton("Stop")
+        self.stop_button = QPushButton("⏹️ Stop")
         self.stop_button.setCursor(Qt.PointingHandCursor)
         self.stop_button.setStyleSheet("""
             QPushButton {
-                background-color: #D83C3E; color: white; border: none;
-                border-radius: 5px; padding: 8px 15px;
-                font-family: 'Segoe UI'; font-size: 10pt; font-weight: bold;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #ff6b6b, stop:1 #ee5a52);
+                color: white; border: none;
+                border-radius: 10px; padding: 12px 18px;
+                font-family: 'Segoe UI'; font-size: 11pt; font-weight: bold;
+                border: 1px solid rgba(255, 255, 255, 0.2);
             }
-            QPushButton:hover { background-color: #E54B4D; }
-            QPushButton:pressed { background-color: #C42A2C; }
+            QPushButton:hover { 
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #ff5252, stop:1 #e53935);
+                transform: translateY(-1px);
+            }
+            QPushButton:pressed { 
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #e53935, stop:1 #d32f2f);
+            }
         """)
         self.stop_button.clicked.connect(self.on_stop_click)
         
@@ -125,7 +246,15 @@ class FloatingOverlay(QWidget):
 
         separator = QFrame()
         separator.setFrameShape(QFrame.VLine)
-        separator.setStyleSheet("color: rgba(60, 120, 220, 0.3);")
+        separator.setStyleSheet("""
+            QFrame {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 rgba(255, 255, 255, 0.2), stop:1 rgba(255, 255, 255, 0.1));
+                border: none;
+                width: 2px;
+                margin: 10px 5px;
+            }
+        """)
 
         main_layout.addLayout(qa_layout, stretch=8)
         main_layout.addWidget(separator)
@@ -155,7 +284,17 @@ class FloatingOverlay(QWidget):
     def _create_labeled_layout(self, prefix_text, label_widget):
         layout = QHBoxLayout()
         prefix_label = QLabel(prefix_text)
-        prefix_label.setStyleSheet("background: transparent; color: #6A85B3; font-family: 'Segoe UI'; font-size: 12pt; font-weight: 700;")
+        prefix_label.setStyleSheet("""
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 #667eea, stop:1 #764ba2);
+            color: white;
+            font-family: 'Segoe UI';
+            font-size: 13pt;
+            font-weight: 700;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-right: 10px;
+        """)
         prefix_label.setSizePolicy(QSizePolicy.Maximum, QSizePolicy.Preferred)
         layout.addWidget(prefix_label, alignment=Qt.AlignTop)
         layout.addWidget(label_widget)
@@ -184,25 +323,57 @@ class FloatingOverlay(QWidget):
         if not message_queue.empty():
             message_type, text = message_queue.get()
             if message_type == 'question':
-                self.question_label.setText(text)
-                is_final_question = text.startswith("Q:")
+                # Clean up text by removing excessive whitespace and gaps
+                cleaned_text = self.clean_text(text)
+                self.question_label.setText(cleaned_text)
+                is_final_question = cleaned_text.startswith("Q:")
                 
                 if not is_final_question:
                     self.status_icon_label.setText("🎙️")
                 else:
                     self.status_icon_label.setText("❓")
-                    self.resize_to_content()
                     
             elif message_type == 'answer':
-                self.answer_label.setText(text)
-                if text != "...":
+                # Clean up answer text and handle Q: A: format
+                cleaned_text = self.clean_text(text)
+                if cleaned_text.startswith("Q:") and "\n\nA:" in cleaned_text:
+                    # Split Q: and A: parts
+                    parts = cleaned_text.split("\n\nA:", 1)
+                    if len(parts) == 2:
+                        question_part = parts[0].replace("Q:", "").strip()
+                        answer_part = parts[1].strip()
+                        self.question_label.setText(question_part)
+                        self.answer_label.setText(answer_part)
+                    else:
+                        self.answer_label.setText(cleaned_text)
+                else:
+                    self.answer_label.setText(cleaned_text)
+                    
+                if cleaned_text != "...":
                     self.status_icon_label.setText("💡")
                 self.resize_to_content()
+
+    def clean_text(self, text):
+        """Clean text by removing excessive whitespace and formatting issues"""
+        if not text:
+            return text
+            
+        # Remove excessive newlines and spaces
+        import re
+        # Replace multiple spaces with single space
+        text = re.sub(r' +', ' ', text)
+        # Replace multiple newlines with double newline
+        text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
+        # Remove leading/trailing whitespace
+        text = text.strip()
+        
+        return text
 
     def resize_to_content(self):
         self.layout().invalidate()
         self.layout().activate()
-        target_height = max(self.initial_height, self.sizeHint().height())
+        suggested_height = self.sizeHint().height()
+        target_height = max(self.initial_height, min(suggested_height, self.max_height))
         current_geo = self.geometry()
         self.resize_animation.setStartValue(current_geo)
         self.resize_animation.setEndValue(QRect(current_geo.x(), current_geo.y(), current_geo.width(), target_height))

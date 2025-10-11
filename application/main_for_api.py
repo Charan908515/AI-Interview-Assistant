@@ -1,29 +1,27 @@
 # main_for_api.py
-import sys, threading, os, requests, json, mss
-from PyQt5.QtWidgets import (
-    QApplication, QWidget, QFormLayout, QLineEdit, QPushButton,
-    QVBoxLayout, QLabel, QFileDialog, QComboBox, QMessageBox
-)
-from PyQt5.QtCore import Qt
+import sys, threading, os, requests, json
+from PyQt5.QtWidgets import QApplication
 from dotenv import load_dotenv
 
-from resume_parser import get_resume_summary
-from ai_engine import configure_google_ai, build_chat, get_response_from_chat_stream, estimate_tokens
-from speech_api1 import start_transcription_thread, set_backend_token, get_audio_devices
-from overlay_ui2 import FloatingOverlay, show_overlay
+# Import the enhanced UI components
+from launcher_ui import LauncherWindow
+from overlay_ui2 import FloatingOverlay, show_overlay  # keep as-is; file must exist
+from ai_engine import get_response_from_chat_stream, estimate_tokens
+from speech_api1 import start_transcription_thread, set_backend_token
 
 # =========================
 # Load ENV
 # =========================
 load_dotenv()
-GEMINI_KEY = os.getenv("gemini_llm6")
+GEMINI_KEY = os.getenv("gemini_llm1")
+
 ASSEMBLY_KEY = os.getenv("assembly_api_key")
 OCR_API_KEY = os.getenv("ocr")
 
 # =========================
 # Backend config
 # =========================
-API_BASE = "http://127.0.0.1:8000"
+API_BASE = "https://se-project-backend-ddr9.onrender.com"
 TOKEN_FILE = "token.json"
 
 stop_event = threading.Event()
@@ -36,13 +34,13 @@ END_UTTERANCE_TIMEOUT = 2.0
 # =========================
 # Backend helpers
 # =========================
-def backend_login(username, password):
-    try:
-        r = requests.post(f"{API_BASE}/auth/login", data={"username": username, "password": password}, timeout=8)
-        if r.status_code == 200:
-            return r.json().get("access_token")
-    except Exception as e:
-        print("[LOGIN ERROR]", e)
+def save_token(token):
+    with open(TOKEN_FILE, "w") as f: json.dump({"access_token": token}, f)
+
+def load_token():
+    if os.path.exists(TOKEN_FILE):
+        with open(TOKEN_FILE, "r") as f:
+            return json.load(f).get("access_token")
     return None
 
 def backend_get_credits(token):
@@ -65,25 +63,34 @@ def backend_deduct_and_log(token, question, answer, tokens_used=None):
     except Exception as e:
         print("[CREDIT/LOG ERROR]", e)
 
-def save_token(token): 
-    with open(TOKEN_FILE, "w") as f: json.dump({"access_token": token}, f)
-
-def load_token():
-    if os.path.exists(TOKEN_FILE):
-        with open(TOKEN_FILE, "r") as f:
-            return json.load(f).get("access_token")
-    return None
-
 # =========================
-# OCR / AI pipeline (unchanged)
+# OCR / AI pipeline
 # =========================
 def get_answer_from_screen():
     global overlay_window
     def do_capture():
         screenshot_path = "screenshot.png"
         try:
-            with mss.mss() as sct:
-                sct.shot(mon=-1, output=screenshot_path)
+            # Capture the screen using PyQt5
+            from PyQt5.QtWidgets import QApplication
+            from PyQt5.QtGui import QPixmap
+            
+            app = QApplication.instance()
+            screen = app.primaryScreen()
+            if screen:
+                # Capture the entire screen
+                screenshot = screen.grabWindow(0)
+                # Save the screenshot
+                screenshot.save(screenshot_path, 'PNG')
+                print(f"Screenshot captured and saved to {screenshot_path}")
+            else:
+                raise Exception("Could not access screen for capture")
+        except Exception as e:
+            print(f"Error capturing screenshot: {e}")
+            if overlay_window:
+                overlay_window.show()
+            show_overlay('answer', f"Screenshot error: {e}")
+            return
         finally:
             if overlay_window:
                 overlay_window.show()
@@ -95,8 +102,8 @@ def get_answer_from_screen():
 
 def process_captured_image(image_path):
     global chat
-    if not OCR_API_KEY:
-        show_overlay('answer', "Error: OCR key missing")
+    if not image_path or not os.path.exists(image_path):
+        show_overlay('answer', "OCR error: screenshot not found")
         return
     try:
         show_overlay('question', "OCR processing...")
@@ -104,7 +111,10 @@ def process_captured_image(image_path):
         with open(image_path, 'rb') as f:
             r = requests.post("https://api.ocr.space/parse/image", files={'filename': f}, data=payload, timeout=15)
         result = r.json()
-        extracted = result['ParsedResults'][0]['ParsedText'].strip()
+        parsed = result.get('ParsedResults')
+        if not parsed:
+            raise ValueError("No OCR results")
+        extracted = parsed[0].get('ParsedText', '').strip()
         question = f"Screen Question: {extracted}"
         show_overlay('question', extracted)
         full_resp = ""
@@ -118,7 +128,11 @@ def process_captured_image(image_path):
         show_overlay('answer', f"OCR error: {e}")
     finally:
         show_overlay('question', "Listening...")
-        if os.path.exists(image_path): os.remove(image_path)
+        try:
+            if os.path.exists(image_path):
+                os.remove(image_path)
+        except Exception:
+            pass
 
 def get_ai_answer():
     global latest_transcript, chat
@@ -146,153 +160,9 @@ def get_ai_answer():
 
 def handle_transcription(text, is_final):
     global latest_transcript
-    if stop_event.is_set(): return
-    if is_final:
-        latest_transcript = text
-    else:
-        latest_transcript = text
+    # set latest_transcript (streaming or final)
+    latest_transcript = text
     show_overlay('question', latest_transcript)
-
-# =========================
-# GUI Windows
-# =========================
-class LoginWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Login - AI Interview Assistant")
-        self.setGeometry(600, 300, 400, 200)
-
-        layout = QFormLayout()
-        self.user = QLineEdit()
-        self.pw = QLineEdit(); self.pw.setEchoMode(QLineEdit.Password)
-        self.btn = QPushButton("Login")
-        self.btn.clicked.connect(self.do_login)
-
-        layout.addRow("Username:", self.user)
-        layout.addRow("Password:", self.pw)
-        layout.addRow(self.btn)
-        self.setLayout(layout)
-
-        # Modern stylesheet
-        self.setStyleSheet("""
-            QWidget { background: #1e1e2f; color: white; font-size: 14px; }
-            QLineEdit { padding: 8px; border: 1px solid #444; border-radius: 6px; }
-            QPushButton { background: #4e73df; color: white; padding: 8px; border-radius: 6px; }
-            QPushButton:hover { background: #3751c5; }
-        """)
-
-    def do_login(self):
-        token = backend_login(self.user.text(), self.pw.text())
-        if token:
-            QApplication.instance()._backend_token = token
-            save_token(token)
-            self.close()
-            self.launcher = LauncherWindow()
-            self.launcher.show()
-        else:
-            QMessageBox.warning(self, "Error", "Login failed")
-
-class LauncherWindow(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.setWindowTitle("Setup Assistant")
-        self.setGeometry(500, 250, 450, 350)
-
-        lay = QVBoxLayout()
-
-        self.balance_label = QLabel("Credits: ...")
-        lay.addWidget(self.balance_label, alignment=Qt.AlignCenter)
-
-        self.refresh_btn = QPushButton("Refresh Balance")
-        self.refresh_btn.clicked.connect(self.refresh_balance)
-        lay.addWidget(self.refresh_btn)
-
-        self.logout_btn = QPushButton("Logout")
-        self.logout_btn.clicked.connect(self.logout)
-        lay.addWidget(self.logout_btn)
-
-        # Resume + device
-        self.resume_btn = QPushButton("Select Resume")
-        self.resume_btn.clicked.connect(self.load_resume)
-        self.resume_lbl = QLabel("No resume selected")
-        lay.addWidget(self.resume_btn)
-        lay.addWidget(self.resume_lbl)
-
-        self.device_combo = QComboBox()
-        for d in get_audio_devices():
-            self.device_combo.addItem(f"{d['name']} (idx {d['index']})", d['index'])
-        lay.addWidget(QLabel("Select Audio Device:"))
-        lay.addWidget(self.device_combo)
-
-        self.start_btn = QPushButton("Start Interview Assistant")
-        self.start_btn.clicked.connect(self.start_assistant)
-        lay.addWidget(self.start_btn)
-
-        self.setLayout(lay)
-
-        # Styling
-        self.setStyleSheet("""
-            QWidget { background: #f5f7fb; color: #2e2e3f; font-size: 14px; }
-            QLabel { font-size: 14px; margin: 4px; }
-            QPushButton { background: #28a745; color: white; padding: 10px; border-radius: 8px; }
-            QPushButton:hover { background: #218838; }
-            QComboBox { padding: 6px; border-radius: 6px; border: 1px solid #aaa; }
-        """)
-
-        self.resume_summary = None
-        self.refresh_balance()
-
-    def refresh_balance(self):
-        token = QApplication.instance()._backend_token
-        if token:
-            credits = backend_get_credits(token)
-            self.balance_label.setText(f"Credits: {credits}")
-        else:
-            self.balance_label.setText("Credits: N/A")
-
-    def logout(self):
-        if os.path.exists(TOKEN_FILE): os.remove(TOKEN_FILE)
-        QMessageBox.information(self, "Logged out", "You will need to login next time.")
-        QApplication.instance().quit()
-
-    def load_resume(self):
-        path, _ = QFileDialog.getOpenFileName(self,"Select Resume","","PDF Files (*.pdf)")
-        if path:
-            self.resume_lbl.setText(os.path.basename(path))
-            self.resume_summary = get_resume_summary(path)
-    def start_assistant(self):
-        if not (self.resume_summary and GEMINI_KEY and ASSEMBLY_KEY and OCR_API_KEY):
-            QMessageBox.warning(self, "Error", "Missing resume or API keys in .env")
-            return
-        try:
-            configure_google_ai(GEMINI_KEY)
-            global chat, transcription_thread, overlay_window
-            chat = build_chat(self.resume_summary)
-            device_index = self.device_combo.currentData()
-            token = QApplication.instance()._backend_token
-            set_backend_token(token)
-            transcription_thread = start_transcription_thread(
-                ASSEMBLY_KEY, handle_transcription, stop_event, device_index
-            )
-
-            if transcription_thread:
-                # Define callback when overlay closes
-                def on_overlay_closed():
-                    self.show()   # bring back launcher instead of quitting
-                    global overlay_window
-                    overlay_window = None
-
-                overlay_window = FloatingOverlay(
-                    process_callback=get_ai_answer,
-                    stop_callback=on_overlay_closed,
-                    capture_callback=get_answer_from_screen
-                )
-                overlay_window.show()
-                self.hide()   # hide launcher instead of closing it
-        except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
-
-    
 
 # =========================
 # Application class
@@ -302,27 +172,93 @@ class MainApplication(QApplication):
         super().__init__(argv)
         self._backend_token = None
 
+        # Show login/launcher
+        self.login_window = None
         token = load_token()
         if token:
             try:
-                r = requests.get(f"{API_BASE}/auth/me", headers={"Authorization": f"Bearer {token}"}, timeout=6)
-                if r.status_code == 200:
-                    print("[AUTO LOGIN] Using saved token")
-                    self._backend_token = token
-                    self.launcher = LauncherWindow()
-                    self.launcher.show()
-                    return
-            except:
+                print("[AUTO LOGIN] Using saved token")
+                self._backend_token = token
+                self.launcher_window = LauncherWindow()
+                self.launcher_window.show()
+                return
+            except Exception:
                 pass
-            print("[AUTO LOGIN FAILED] Token expired")
 
-        self.login = LoginWindow()
-        self.login.show()
+        self.login_window = LauncherWindow()
+        self.login_window.show()
+
+    def start_main_app(self, chat_instance, device_index, assembly_key, ocr_key):
+        """Start the main interview assistant with overlay and transcription."""
+        global chat, transcription_thread, overlay_window, stop_event
+        chat = chat_instance
+        set_backend_token(self._backend_token)
+
+        # Create and show floating overlay
+        overlay_window = FloatingOverlay(
+            process_callback=get_ai_answer,
+            capture_callback=get_answer_from_screen,
+            stop_callback=stop_assistant
+        )
+        overlay_window.show()
+
+        # reset stop_event
+        stop_event = threading.Event()
+        # Start transcription thread: note parameter order (api_key, callback, stop_event, device_index)
+        transcription_thread = start_transcription_thread(assembly_key, handle_transcription, stop_event, device_index)
+
+        # Hide launcher window if present
+        if hasattr(self, 'launcher_window') and self.launcher_window:
+            try:
+                self.launcher_window.hide()
+            except Exception:
+                pass
+
+def stop_assistant():
+    """Stop the assistant and return to launcher"""
+    global stop_event, overlay_window, transcription_thread
+    
+    print("Stopping assistant...")
+    
+    # Set stop event to signal all threads to stop
+    if stop_event:
+        stop_event.set()
+    
+    # Wait for transcription thread to finish
+    if transcription_thread and transcription_thread.is_alive():
+        print("Waiting for transcription thread to stop...")
+        transcription_thread.join(timeout=3.0)  # Wait up to 3 seconds
+        if transcription_thread.is_alive():
+            print("Warning: Transcription thread did not stop gracefully")
+    
+    # Close overlay window
+    if overlay_window:
+        try:
+            overlay_window.close()
+        except Exception as e:
+            print(f"Error closing overlay: {e}")
+    
+    # Reset global variables
+    overlay_window = None
+    transcription_thread = None
+    
+    # Show launcher window again
+    app = QApplication.instance()
+    if hasattr(app, 'launcher_window') and app.launcher_window:
+        app.launcher_window.show()
+        print("Returned to launcher window")
+    else:
+        print("No launcher window found, exiting application")
+        app.quit()
 
 def listen_for_escape_key():
-    import keyboard
-    keyboard.wait("esc")
-    if QApplication.instance(): QApplication.instance().quit()
+    try:
+        import keyboard
+        keyboard.wait("esc")
+        if QApplication.instance():
+            QApplication.instance().quit()
+    except Exception:
+        pass
 
 if __name__=="__main__":
     esc_thread=threading.Thread(target=listen_for_escape_key,daemon=True)

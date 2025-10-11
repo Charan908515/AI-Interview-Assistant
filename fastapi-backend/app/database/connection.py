@@ -9,29 +9,36 @@ load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
 
-# Extract database name from DATABASE_URL
-def get_db_name(database_url):
-    match = re.search(r"/([a-zA-Z0-9_]+)(\?|$)", database_url)
+
+def get_db_name(database_url: str):
+    match = re.search(r"/([a-zA-Z0-9_]+)(\?|$)", database_url or "")
     if match:
         return match.group(1)
     return None
 
-db_name = get_db_name(DATABASE_URL)
 
-# Remove database name from URL for initial connection
-def get_server_url(database_url):
+def should_auto_create_db(database_url: str) -> bool:
+    return bool(database_url and database_url.startswith("mysql"))
+
+
+def get_server_url(database_url: str):
     return re.sub(r"/[a-zA-Z0-9_]+(\?|$)", "/", database_url, count=1)
 
-server_url = get_server_url(DATABASE_URL)
 
-# Create the database if it does not exist
-if db_name:
+db_name = get_db_name(DATABASE_URL)
+
+if db_name and should_auto_create_db(DATABASE_URL):
+    server_url = get_server_url(DATABASE_URL)
     tmp_engine = create_engine(server_url, pool_pre_ping=True)
     with tmp_engine.connect() as conn:
         conn.execute(text(f"CREATE DATABASE IF NOT EXISTS {db_name}"))
     tmp_engine.dispose()
 
-# Now connect to the actual database
+
+if DATABASE_URL and DATABASE_URL.startswith("cockroachdb://"):
+    from sqlalchemy_cockroachdb import run_transaction
+
+
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,

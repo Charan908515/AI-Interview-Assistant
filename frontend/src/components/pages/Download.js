@@ -11,8 +11,8 @@ const Download = () => {
     setDownloadStarted(true);
     // Create a download link for the .exe file
     const link = document.createElement('a');
-    link.href = '/AI_Interview_Assistant_Setup.exe';
-    link.download = 'AI_Interview_Assistant_Setup.exe';
+    link.href = '/AI_Interview_Assistant_With_Screen_Capture_Setup.exe';
+    link.download = 'AI_Interview_Assistant_With_Screen_Capture_Setup.exe';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
