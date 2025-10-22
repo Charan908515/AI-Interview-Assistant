@@ -187,6 +187,7 @@ class FloatingOverlay(QWidget):
                     stop:0 #5a6fd8, stop:1 #6b4394);
             }
         """)
+        self.process_button_default_text = self.process_button.text()
         self.process_button.clicked.connect(self.on_process_click)
 
         self.capture_button = QPushButton("📸 Capture Screen")
@@ -275,7 +276,9 @@ class FloatingOverlay(QWidget):
         if self.process_callback:
             self.status_icon_label.setText("🤔")
             self.answer_label.setText("...")
-            self.process_callback()
+            self.process_button.setEnabled(False)
+            self.process_button.setText("🤔 Thinking...")
+            QTimer.singleShot(0, self.process_callback)
 
     def on_stop_click(self):
         if self.stop_callback:
@@ -326,16 +329,14 @@ class FloatingOverlay(QWidget):
                 # Clean up text by removing excessive whitespace and gaps
                 cleaned_text = self.clean_text(text)
                 self.question_label.setText(cleaned_text)
-                is_final_question = cleaned_text.startswith("Q:")
-                
-                if not is_final_question:
-                    self.status_icon_label.setText("🎙️")
-                else:
+                if cleaned_text.startswith("Q:"):
                     self.status_icon_label.setText("❓")
-                    
+                else:
+                    self.status_icon_label.setText("🎙️")
             elif message_type == 'answer':
                 # Clean up answer text and handle Q: A: format
                 cleaned_text = self.clean_text(text)
+                answer_text = cleaned_text
                 if cleaned_text.startswith("Q:") and "\n\nA:" in cleaned_text:
                     # Split Q: and A: parts
                     parts = cleaned_text.split("\n\nA:", 1)
@@ -344,14 +345,21 @@ class FloatingOverlay(QWidget):
                         answer_part = parts[1].strip()
                         self.question_label.setText(question_part)
                         self.answer_label.setText(answer_part)
+                        answer_text = answer_part
                     else:
                         self.answer_label.setText(cleaned_text)
                 else:
                     self.answer_label.setText(cleaned_text)
-                    
-                if cleaned_text != "...":
+
+                if answer_text.strip() == "...":
+                    self.status_icon_label.setText("🤔")
+                    self.process_button.setEnabled(False)
+                else:
                     self.status_icon_label.setText("💡")
-                self.resize_to_content()
+                    self.process_button.setEnabled(True)
+                    self.process_button.setText(self.process_button_default_text)
+
+            self.resize_to_content()
 
     def clean_text(self, text):
         """Clean text by removing excessive whitespace and formatting issues"""

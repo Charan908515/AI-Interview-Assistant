@@ -39,7 +39,7 @@ def build_chat(resume_summary: str):
     )
 
     history = [SystemMessage(content=system_prompt)]
-    print(">> testing the llm", _llm.invoke([HumanMessage(content="Hello")]))
+    #print(">> testing the llm", _llm.invoke([HumanMessage(content="Hello")]))
     return (_llm, history)
 
 
