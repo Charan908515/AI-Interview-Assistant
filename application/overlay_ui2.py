@@ -276,9 +276,14 @@ class FloatingOverlay(QWidget):
         if self.process_callback:
             self.status_icon_label.setText("🤔")
             self.answer_label.setText("...")
+            # Disable button and change text to indicate processing
             self.process_button.setEnabled(False)
             self.process_button.setText("🤔 Thinking...")
-            QTimer.singleShot(0, self.process_callback)
+            self.process_button.setCursor(Qt.ForbiddenCursor)
+            # Force UI to update before calling the callback
+            QApplication.processEvents()
+            # Call the callback (should be threaded to avoid blocking)
+            self.process_callback()
 
     def on_stop_click(self):
         if self.stop_callback:
@@ -351,13 +356,19 @@ class FloatingOverlay(QWidget):
                 else:
                     self.answer_label.setText(cleaned_text)
 
+                # Check if we're still processing (answer is "...") or if we have a real answer
                 if answer_text.strip() == "...":
+                    # Still processing - keep button disabled
                     self.status_icon_label.setText("🤔")
                     self.process_button.setEnabled(False)
+                    self.process_button.setText("🤔 Thinking...")
+                    self.process_button.setCursor(Qt.ForbiddenCursor)
                 else:
+                    # Answer received - re-enable button and restore original text
                     self.status_icon_label.setText("💡")
                     self.process_button.setEnabled(True)
                     self.process_button.setText(self.process_button_default_text)
+                    self.process_button.setCursor(Qt.PointingHandCursor)
 
             self.resize_to_content()
 

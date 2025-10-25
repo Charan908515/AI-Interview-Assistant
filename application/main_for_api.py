@@ -158,6 +158,11 @@ def get_ai_answer():
         show_overlay('question', "Listening...")
         latest_transcript = ""
 
+def get_ai_answer_threaded():
+    """Wrapper to run get_ai_answer in a separate thread to avoid blocking the UI"""
+    thread = threading.Thread(target=get_ai_answer, daemon=True)
+    thread.start()
+
 def handle_transcription(text, is_final):
     global latest_transcript
     # set latest_transcript (streaming or final)
@@ -196,7 +201,7 @@ class MainApplication(QApplication):
 
         # Create and show floating overlay
         overlay_window = FloatingOverlay(
-            process_callback=get_ai_answer,
+            process_callback=get_ai_answer_threaded,
             capture_callback=get_answer_from_screen,
             stop_callback=stop_assistant
         )
