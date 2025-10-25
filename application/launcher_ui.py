@@ -4,11 +4,11 @@ from dotenv import load_dotenv
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QPushButton, QFileDialog, QLabel,
     QComboBox, QApplication, QMessageBox, QLineEdit, QHBoxLayout,
-    QFrame, QSizePolicy, QProgressBar
+    QFrame, QSizePolicy, QProgressBar, QStackedWidget
 )
 from PyQt5.QtCore import Qt, QPropertyAnimation, QEasingCurve, QTimer, QThread, pyqtSignal
 from PyQt5.QtGui import QFont, QColor, QIcon, QPixmap, QPainter, QBrush, QLinearGradient
-from PyQt5.QtWidgets import QGraphicsDropShadowEffect
+from PyQt5.QtWidgets import QGraphicsDropShadowEffect, QGraphicsOpacityEffect
 
 # Internal imports
 from resume_parser import get_resume_summary
@@ -36,7 +36,7 @@ def save_token_local(token: str):
 class LauncherWindow(QWidget):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("AI Interview Assistant")
+        self.setWindowTitle("Whisper AI")
         self.setGeometry(80, 40, 820, 900)
         self.setFixedSize(820, 900)
         self.setWindowFlags(Qt.FramelessWindowHint)
@@ -60,7 +60,7 @@ class LauncherWindow(QWidget):
         self.container.setStyleSheet("""
             QFrame {
                 background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
-                  stop:0 rgba(99,102,241,0.95), stop:1 rgba(236,72,153,0.95));
+                  stop:0 rgba(173, 223, 255, 0.98), stop:1 rgba(94, 173, 255, 0.95));
                 border-radius: 22px;
             }
         """)
@@ -79,10 +79,10 @@ class LauncherWindow(QWidget):
         top_bar = QHBoxLayout()
         top_bar.setContentsMargins(0, 0, 0, 0)
 
-        title = QLabel("AI Interview Assistant")
+        title = QLabel("Whisper AI")
         title.setFont(QFont("Segoe UI", 18, QFont.Bold))
-        title.setStyleSheet("color: white;")
-        top_bar.addWidget(title)
+        title.setStyleSheet("color: white;letter-spacing: 2px;qproperty-alignment: 'AlignCenter';")
+        top_bar.addWidget(title, alignment=Qt.AlignCenter)
         top_bar.addStretch()
 
         close_btn = QPushButton("✕")
@@ -91,13 +91,13 @@ class LauncherWindow(QWidget):
         close_btn.setStyleSheet("""
             QPushButton {
                 background: rgba(255,255,255,0.1);
-                color: white;
+                color: red;
                 border-radius: 8px;
                 font-size: 16px;
                 font-weight: bold;
             }
             QPushButton:hover {
-                background: rgba(255,100,100,0.4);
+                background: black;
             }
         """)
         close_btn.clicked.connect(self.close)
@@ -105,6 +105,10 @@ class LauncherWindow(QWidget):
 
         layout.addLayout(top_bar)
 
+        # --- Stacked Widget for Login/Dashboard ---
+        self.stacked_widget = QStackedWidget()
+        self.stacked_widget.setStyleSheet("background: transparent;")
+        
         # --- Login Section ---
         self.login_frame = QFrame()
         self.login_frame.setStyleSheet("background: transparent;")
@@ -116,13 +120,31 @@ class LauncherWindow(QWidget):
         logo_label.setFont(QFont("Segoe UI Emoji", 64))
         logo_label.setAlignment(Qt.AlignCenter)
         login_layout.addWidget(logo_label)
-
-        hint = QLabel("Sign in to your account")
-        hint.setFont(QFont("Segoe UI", 14, QFont.Bold))
-        hint.setAlignment(Qt.AlignCenter)
-        hint.setStyleSheet("color: white;")
-        login_layout.addWidget(hint)
-
+        # --- Title ---
+        title = QLabel("Sign in to your account")
+        title.setFont(QFont("Segoe UI", 20, QFont.Bold))
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("color: white; margin-bottom: 8px;")
+        login_layout.addWidget(title)
+        layout.addSpacing(15)
+        # Welcome message
+        welcome_msg = QLabel(
+            "Welcome back! Please enter your credentials to access your AI Interview Assistant. "
+            "Your personalized interview preparation experience awaits!"
+        )
+        welcome_msg.setWordWrap(True)
+        welcome_msg.setAlignment(Qt.AlignCenter)
+        welcome_msg.setStyleSheet("""
+            QLabel {
+                color: rgba(255, 255, 255, 0.7);
+                font-size: 20px;
+                line-height: 1.5;
+                margin-bottom: 24px;
+                padding: 0 10px;
+            }
+        """)
+        login_layout.addWidget(welcome_msg)
+        layout.addSpacing(15)
         self.username_input = QLineEdit()
         self.username_input.setPlaceholderText("Username or email")
         self.username_input.setFixedHeight(50)
@@ -132,7 +154,7 @@ class LauncherWindow(QWidget):
         self.username_input.setAttribute(Qt.WA_MacShowFocusRect, False)
         self.username_input.setFocusPolicy(Qt.StrongFocus)
         login_layout.addWidget(self.username_input)
-
+        login_layout.addSpacing(20)
         # Password input container
         password_container = QHBoxLayout()
         password_container.setSpacing(0)
@@ -149,7 +171,7 @@ class LauncherWindow(QWidget):
         
         # Password visibility toggle button
         self.password_toggle_btn = QPushButton("🙈")  # Monkey covering eyes (hidden)
-        self.password_toggle_btn.setFixedSize(40, 40)
+        self.password_toggle_btn.setFixedSize(70, 50)
         self.password_toggle_btn.setCursor(Qt.PointingHandCursor)
         self.password_toggle_btn.setStyleSheet(self._embedded_button_style())
         self.password_toggle_btn.clicked.connect(self.toggle_password_visibility)
@@ -157,7 +179,9 @@ class LauncherWindow(QWidget):
         
         password_container.addWidget(self.password_input)
         password_container.addWidget(self.password_toggle_btn)
+
         login_layout.addLayout(password_container)
+        login_layout.addSpacing(20)
 
         # Login error label
         self.login_error_label = QLabel()
@@ -168,7 +192,7 @@ class LauncherWindow(QWidget):
                 border: 1px solid rgba(255, 107, 107, 0.3);
                 border-radius: 8px;
                 padding: 8px 12px;
-                font-size: 12px;
+                font-size: 20px;
                 font-weight: bold;
             }
         """)
@@ -179,11 +203,14 @@ class LauncherWindow(QWidget):
         # Login button with spinner container
         login_container = QHBoxLayout()
         login_btn = QPushButton("🔐 Login")
+        login_btn.setObjectName("loginButton")  # Add object name for debugging
         login_btn.setCursor(Qt.PointingHandCursor)
         login_btn.setFixedHeight(46)
         login_btn.setStyleSheet(self._primary_button_style())
-        login_btn.clicked.connect(self.try_login)
+        # Connect the button click
+        login_btn.clicked.connect(self.on_login_clicked)
         self.login_btn = login_btn
+        print("Login button created and connected")  # Debug print
         
         # Login spinner
         self.login_spinner = QProgressBar()
@@ -191,15 +218,15 @@ class LauncherWindow(QWidget):
         self.login_spinner.setFixedHeight(46)
         self.login_spinner.setStyleSheet("""
             QProgressBar {
-                background: rgba(255,255,255,0.1);
+                background: rgba(255,255,255,0.08);
                 border: none;
                 border-radius: 14px;
                 text-align: center;
-                color: white;
+                color: #013243;
                 font-weight: bold;
             }
             QProgressBar::chunk {
-                background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 #42e695, stop:1 #3bb2b8);
+                background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 #9fe8ff, stop:1 #4aa6ff);
                 border-radius: 14px;
             }
         """)
@@ -208,96 +235,143 @@ class LauncherWindow(QWidget):
         login_container.addWidget(login_btn)
         login_container.addWidget(self.login_spinner)
         login_layout.addLayout(login_container)
-
-        layout.addWidget(self.login_frame)
-        layout.addStretch()
+        login_layout.addStretch()  # Push login content to top
 
         # --- Dashboard Section ---
         self.dashboard_frame = self.build_dashboard_frame()
-        layout.addWidget(self.dashboard_frame)
-        self.dashboard_frame.hide()
+        
+        # Add both frames to stacked widget
+        self.stacked_widget.addWidget(self.login_frame)  # Index 0
+        self.stacked_widget.addWidget(self.dashboard_frame)  # Index 1
+        self.stacked_widget.setCurrentIndex(0)  # Show login by default
+        
+        layout.addWidget(self.stacked_widget)
+        layout.addStretch()
 
     def build_dashboard_frame(self):
         frame = QFrame()
-        frame.setStyleSheet("background: transparent;")
+        frame.setStyleSheet("""
+            QFrame {
+                background: transparent;
+            }
+        """)
         layout = QVBoxLayout(frame)
-        layout.setContentsMargins(40, 20, 40, 20)
-        layout.setSpacing(16)
+        layout.setContentsMargins(40, 30, 40, 30)
+        layout.setSpacing(18)
+        
+        # Set size policies to ensure proper expansion
+        frame.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
-        # Welcome + Credits row
+        # Welcome + Credits row - simplified layout
         top_row = QHBoxLayout()
+        top_row.setContentsMargins(0, 0, 0, 0)
+        top_row.setSpacing(12)
+        
+        # Welcome label
         self.welcome_label = QLabel("Welcome")
-        self.welcome_label.setFont(QFont("Segoe UI", 13, QFont.Bold))
+        self.welcome_label.setFont(QFont("Segoe UI", 16, QFont.Bold))
         self.welcome_label.setStyleSheet("color: white;")
         top_row.addWidget(self.welcome_label)
-
+        
+        # Spacer
         top_row.addStretch()
-
+        
+        # Credits label
         self.credits_label = QLabel("Credits: —")
         self.credits_label.setFont(QFont("Segoe UI", 12, QFont.Bold))
-        self.credits_label.setStyleSheet("color: #ffe082;")
+        self.credits_label.setStyleSheet("color: #ffe082; padding-right: 10px;")
         top_row.addWidget(self.credits_label)
-
+        
+        # Refresh button
         refresh_btn = QPushButton("Refresh")
         refresh_btn.setCursor(Qt.PointingHandCursor)
-        refresh_btn.setFixedHeight(32)
+        refresh_btn.setFixedSize(85, 34)
         refresh_btn.setStyleSheet(self._secondary_button_style())
         refresh_btn.clicked.connect(self.load_credits)
         top_row.addWidget(refresh_btn)
-
+        
+        # Logout button
         logout_btn = QPushButton("Logout")
         logout_btn.setCursor(Qt.PointingHandCursor)
+        logout_btn.setFixedSize(85, 34)
         logout_btn.setStyleSheet(self._secondary_button_style())
         logout_btn.clicked.connect(self.logout_from_dashboard)
         top_row.addWidget(logout_btn)
 
         layout.addLayout(top_row)
 
-        # Resume upload
+        # Resume upload card
         resume_card = self._make_card()
-        r_layout = QHBoxLayout(resume_card)
-        r_label = QLabel("📄 Resume:")
-        r_label.setFont(QFont("Segoe UI", 11, QFont.Bold))
-        r_label.setStyleSheet("color: white;")
-        r_layout.addWidget(r_label)
+        resume_card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        r_main_layout = QVBoxLayout(resume_card)
+        r_main_layout.setContentsMargins(18, 14, 18, 14)
+        r_main_layout.setSpacing(12)
         
+        # Resume heading
+        r_label = QLabel("📄 Upload Resume")
+        r_label.setFont(QFont("Segoe UI", 13, QFont.Bold))
+        r_label.setStyleSheet("color: white;")
+        r_main_layout.addWidget(r_label)
+        
+        # Resume controls row
+        r_controls = QHBoxLayout()
+        r_controls.setSpacing(12)
+        
+        # Resume status
         self.resume_status = QLabel("No resume selected")
-        self.resume_status.setStyleSheet("color: rgba(255,255,255,0.8); font-style: italic;")
-        r_layout.addWidget(self.resume_status)
+        self.resume_status.setStyleSheet("""
+            color: rgba(255,255,255,0.85);
+            font-style: italic;
+            font-size: 12px;
+        """)
+        self.resume_status.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        r_controls.addWidget(self.resume_status)
         
         # Resume spinner
         self.resume_spinner = QProgressBar()
         self.resume_spinner.setRange(0, 0)
-        self.resume_spinner.setFixedSize(24, 24)
+        self.resume_spinner.setFixedSize(28, 28)
+        self.resume_spinner.setTextVisible(False)
         self.resume_spinner.setStyleSheet("""
             QProgressBar {
                 background: transparent;
                 border: 2px solid rgba(255,255,255,0.3);
-                border-radius: 12px;
+                border-radius: 14px;
             }
             QProgressBar::chunk {
                 background: qlineargradient(x1:0,y1:0,x2:1,y2:0, stop:0 #42e695, stop:1 #3bb2b8);
-                border-radius: 10px;
+                border-radius: 12px;
             }
         """)
         self.resume_spinner.hide()
-        r_layout.addWidget(self.resume_spinner)
+        r_controls.addWidget(self.resume_spinner)
         
+        # Select PDF button
         resume_btn = QPushButton("Select PDF")
         resume_btn.setCursor(Qt.PointingHandCursor)
+        resume_btn.setFixedSize(120, 38)
         resume_btn.setStyleSheet(self._secondary_button_style())
         resume_btn.clicked.connect(self.load_resume)
         self.resume_btn = resume_btn
-        r_layout.addWidget(resume_btn)
+        r_controls.addWidget(resume_btn)
+        
+        r_main_layout.addLayout(r_controls)
         layout.addWidget(resume_card)
 
-        # Microphone
+        # Microphone card
         mic_card = self._make_card()
-        m_layout = QHBoxLayout(mic_card)
-        m_label = QLabel("🎤 Microphone:")
-        m_label.setFont(QFont("Segoe UI", 11, QFont.Bold))
+        mic_card.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        m_main_layout = QVBoxLayout(mic_card)
+        m_main_layout.setContentsMargins(18, 14, 18, 14)
+        m_main_layout.setSpacing(12)
+        
+        # Microphone heading
+        m_label = QLabel("🎤 Select Microphone")
+        m_label.setFont(QFont("Segoe UI", 13, QFont.Bold))
         m_label.setStyleSheet("color: white;")
-        m_layout.addWidget(m_label)
+        m_main_layout.addWidget(m_label)
+        
+        # Microphone dropdown
         self.device_combo = QComboBox()
         self.device_combo.setStyleSheet("""
             QComboBox {
@@ -358,77 +432,81 @@ class LauncherWindow(QWidget):
                 self.device_combo.addItem("No input devices found", -1)
         except Exception:
             self.device_combo.addItem("Device listing failed", -1)
-        m_layout.addWidget(self.device_combo)
+        m_main_layout.addWidget(self.device_combo)
         layout.addWidget(mic_card)
 
-        # Start button
+        # Start button with centered alignment
+        layout.addSpacing(10)
+        
+        button_layout = QHBoxLayout()
+        button_layout.addStretch()
+        
         start_btn = QPushButton("🚀 Start Assistant")
         start_btn.setCursor(Qt.PointingHandCursor)
-        start_btn.setFixedHeight(52)
+        start_btn.setFixedSize(240, 54)
         start_btn.setStyleSheet(self._primary_button_style())
         start_btn.clicked.connect(self.start_assistant)
-        layout.addWidget(start_btn, alignment=Qt.AlignRight)
+        button_layout.addWidget(start_btn)
+        
+        button_layout.addStretch()
+        layout.addLayout(button_layout)
 
         return frame
 
     # ---------------- Helpers ----------------
     def _make_card(self):
         f = QFrame()
-        f.setStyleSheet("QFrame { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 12px; }")
+        f.setStyleSheet("QFrame { background: rgba(255,255,255,0.06); border-radius: 12px; padding: 12px; }")
         return f
 
     def _input_style(self):
         return """
         QLineEdit {
-            background: rgba(40, 44, 52, 0.9);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1.5px solid rgba(74, 144, 226, 0.4);
+            color: rgba(30, 32, 34, 0.5);
             border-radius: 10px;
-            padding: 8px 12px;
-            font-size: 13px;
-            selection-background-color: rgba(66, 230, 149, 0.4);
-            selection-color: white;
+            padding: 10px 14px;
+            font-size: 17px;
+            font-weight:600;
+            selection-background-color: rgba(66, 165, 245, 0.5);
+            selection-color: #ffffff;
         }
         QLineEdit:focus {
-            background: rgba(30, 34, 42, 0.95);
-            border: 2px solid rgba(66, 230, 149, 0.8);
+            background: rgba(255, 255, 255, 0.12);
+            border: 1.5px solid rgba(100, 181, 246, 0.8);
             outline: none;
         }
         QLineEdit:hover {
-            background: rgba(35, 39, 47, 0.92);
-            border: 1px solid rgba(255,255,255,0.4);
+            background: rgba(255, 255, 255, 0.12);
+            border: 1.5px solid rgba(100, 181, 246, 0.6);
         }
         """
     
     def _input_style_with_button(self):
         return """
         QLineEdit {
-            background: rgba(40, 44, 52, 0.9);
-            border: 1px solid rgba(255,255,255,0.3);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1.5px solid rgba(74, 144, 226, 0.4);
             border-top-right-radius: 0px;
             border-bottom-right-radius: 0px;
             border-right: none;
-            color: white;
-            border-radius: 10px;
-            padding: 8px 12px;
-            font-size: 13px;
-            selection-background-color: rgba(66, 230, 149, 0.4);
-            selection-color: white;
+            color: #f0f8ff;
+            padding: 10px 14px;
+            font-size: 14px;
+            selection-background-color: rgba(66, 165, 245, 0.5);
+            selection-color: #ffffff;
         }
         QLineEdit:focus {
-            background: rgba(30, 34, 42, 0.95);
-            border: 2px solid rgba(66, 230, 149, 0.8);
+            background: rgba(255, 255, 255, 0.12);
+            border: 1.5px solid rgba(100, 181, 246, 0.8);
             border-right: none;
             outline: none;
         }
-        QLineEdit:focus {
-            background: rgba(30, 34, 42, 0.95);
-            border: 2px solid rgba(66, 230, 149, 0.8);
-            outline: none;
-        }
         QLineEdit:hover {
-            background: rgba(35, 39, 47, 0.92);
-            border: 1px solid rgba(255,255,255,0.4);
+            background: rgba(255, 255, 255, 0.12);
+            border: 1.5px solid rgba(100, 181, 246, 0.6);
+            border-right: none;
         }
         """
     
@@ -436,13 +514,13 @@ class LauncherWindow(QWidget):
         return """
         QPushButton {
             background: rgba(40, 44, 52, 0.9);
-            border: 1px solid rgba(255,255,255,0.3);
+            border: 1px solid orange;
             border-left: none;
             border-top-left-radius: 0px;
             border-bottom-left-radius: 0px;
             border-radius: 10px;
             color: white;
-            font-size: 16px;
+            font-size: 30px;
             font-weight: bold;
         }
         QPushButton:hover {
@@ -458,23 +536,24 @@ class LauncherWindow(QWidget):
     def _input_style_with_embedded_button(self):
         return """
         QLineEdit {
-            background: rgba(40, 44, 52, 0.9);
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1.5px solid rgba(74, 144, 226, 0.4);
+            color: rgba(30, 32, 34, 0.5);
             border-radius: 10px;
-            padding: 8px 50px 8px 12px;
-            font-size: 14px;
-            selection-background-color: rgba(66, 230, 149, 0.4);
-            selection-color: white;
+            padding: 10px 50px 10px 14px;
+            font-size: 17px;
+            font-weight: 600;
+            selection-background-color: rgba(66, 165, 245, 0.5);
+            selection-color: #ffffff;
         }
         QLineEdit:focus {
-            background: rgba(30, 34, 42, 0.95);
-            border: 2px solid rgba(66, 230, 149, 0.8);
+            background: rgba(255, 255, 255, 0.12);
+            border: 1.5px solid rgba(100, 181, 246, 0.8);
             outline: none;
         }
         QLineEdit:hover {
-            background: rgba(35, 39, 47, 0.92);
-            border: 1px solid rgba(255,255,255,0.4);
+            background: rgba(255, 255, 255, 0.12);
+            border: 1.5px solid rgba(100, 181, 246, 0.6);
         }
         """
     
@@ -483,47 +562,79 @@ class LauncherWindow(QWidget):
         QPushButton {
             background: transparent;
             border: none;
-            color: white;
-            font-size: 16px;
+            color: #013243;
+            font-size: 46px;
             font-weight: bold;
             border-radius: 6px;
             margin: 5px;
         }
         QPushButton:hover {
-            background: rgba(255,255,255,0.1);
+            background: rgba(orange,0.12);
         }
         QPushButton:pressed {
-            background: rgba(255,255,255,0.2);
+            background: rgba(orange,0.18);
         }
         """
 
     def _primary_button_style(self):
         return """
         QPushButton {
-            background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #42e695, stop:1 #3bb2b8);
-            color: #012;
-            font-weight: bold;
-            border-radius: 14px;
+            background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #9fe8ff, stop:1 #4aa6ff);
+            color: #012b36;
+            font-weight: 400;
+            border-radius: 15px;
+            font-size:20px;
+            letter-spacing:2px;
             padding: 10px 20px;
+            border: 1px solid rgba(255,255,255,0.12);
         }
-        QPushButton:hover { transform: translateY(-2px); }
+        QPushButton:hover { background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #bff2ff, stop:1 #66baff); }
         """
 
     def _secondary_button_style(self):
         return """
         QPushButton {
-            background: rgba(255,255,255,0.12);
-            color: white;
+            background: rgba(255,255,255,0.08);
+            color: #f8fbff;
             border-radius: 8px;
             padding: 6px 10px;
+            border: 1px solid orange;
         }
-        QPushButton:hover { background: rgba(255,255,255,0.2); }
+        QPushButton:hover { background: rgba(orange,0.12); }
         """
 
     def setup_animations(self):
         self.fade_anim = QPropertyAnimation(self, b"windowOpacity")
         self.fade_anim.setDuration(400)
         self.fade_anim.setEasingCurve(QEasingCurve.InOutQuad)
+
+    def animate_widget_fade(self, widget, start=0.0, end=1.0, duration=350, finished_callback=None):
+        """Fade a widget from start to end opacity. Calls finished_callback() when done if provided."""
+        try:
+            effect = QGraphicsOpacityEffect(widget)
+            widget.setGraphicsEffect(effect)
+            anim = QPropertyAnimation(effect, b"opacity")
+            anim.setDuration(duration)
+            anim.setStartValue(start)
+            anim.setEndValue(end)
+            anim.setEasingCurve(QEasingCurve.InOutQuad)
+
+            if finished_callback:
+                anim.finished.connect(finished_callback)
+
+            # Ensure widget visibility
+            if end > 0:
+                widget.setVisible(True)
+
+            anim.start(QPropertyAnimation.DeleteWhenStopped)
+        except Exception:
+            # Fallback: just set visible state
+            widget.setVisible(end > 0)
+
+    def animate_dashboard_show(self):
+        """Switch to dashboard with smooth fade animation."""
+        # Simply switch to dashboard page in stacked widget
+        self.stacked_widget.setCurrentIndex(1)
     
     def setup_input_cursors(self):
         """Ensure input field cursors are properly configured"""
@@ -543,9 +654,14 @@ class LauncherWindow(QWidget):
         self.fade_anim.start()
 
     # ---------------- Logic ----------------
+    def on_login_clicked(self):
+        print("Login button clicked")  # Debug print
+        self.try_login()
+        
     def try_login(self):
         username = self.username_input.text().strip()
         password = self.password_input.text().strip()
+        print(f"Attempting login with username: {username}")  # Debug print
         
         # Hide previous error
         self.login_error_label.hide()
@@ -559,10 +675,15 @@ class LauncherWindow(QWidget):
         self.login_spinner.show()
         
         # Use QTimer to allow UI to update before making request
+        print("Starting login process...")  # Debug print
         QTimer.singleShot(100, lambda: self._perform_login(username, password))
     
     def _perform_login(self, username, password):
+        print(f"Performing login for: {username}")  # Debug print
         try:
+            # Ensure dashboard frame is built and ready
+            if not hasattr(self, 'dashboard_frame'):
+                self.build_dashboard_frame()
             r = requests.post(f"{API_BASE}/auth/login", data={"username": username, "password": password}, timeout=8)
             if r.status_code == 200:
                 token = r.json().get("access_token")
@@ -573,8 +694,8 @@ class LauncherWindow(QWidget):
                 app._backend_token = token
                 save_token_local(token)
                 self.welcome_label.setText(f"Welcome, {username}")
-                self.login_frame.hide()
-                self.dashboard_frame.show()
+                # Smooth transition to dashboard
+                self.animate_dashboard_show()
                 self.load_credits()
             else:
                 error_msg = "Invalid username or password."
@@ -600,7 +721,7 @@ class LauncherWindow(QWidget):
         self.login_error_label.setText(message)
         self.login_error_label.show()
         # Auto-hide after 5 seconds
-        QTimer.singleShot(5000, self.login_error_label.hide)
+        QTimer.singleShot(5000, lambda: self.animate_widget_fade(self.login_error_label, start=1.0, end=0.0, duration=350))
     
     def toggle_password_visibility(self):
         """Toggle password visibility with monkey emoji animation"""
@@ -624,12 +745,23 @@ class LauncherWindow(QWidget):
             try:
                 if os.path.exists(TOKEN_FILE): os.remove(TOKEN_FILE)
             except Exception: pass
-            self.dashboard_frame.hide()
-            self.login_frame.show()
+            
+            # Switch back to login page
+            self.stacked_widget.setCurrentIndex(0)
+            
+            # Clear inputs and reset state
             self.username_input.clear()
             self.password_input.clear()
             self.resume_status.setText("No resume selected")
+            self.resume_status.setStyleSheet("color: rgba(255,255,255,0.85); font-style: italic;")
             self.credits_label.setText("Credits: —")
+            
+            # Reset password visibility
+            self.password_visible = False
+            self.password_input.setEchoMode(QLineEdit.Password)
+            self.password_toggle_btn.setText("🙈")
+            if self.login_error_label:
+                self.login_error_label.hide()
 
     def load_credits(self):
         app = QApplication.instance()
@@ -666,13 +798,22 @@ class LauncherWindow(QWidget):
             summary = get_resume_summary(path)
             self.resume_summary = summary
             
-            # Show success with tick
-            self.resume_status.setText(f"✅ {filename}")
-            self.resume_status.setStyleSheet("color: #42e695; font-weight: bold;")
+            # Show success with checkmark
+            self.resume_status.setText(f" {filename} uploaded")
+            self.resume_status.setStyleSheet("""
+                color:rgba(30, 32, 34, 0.5) ;
+                font-weight: 400;
+                font-size: 15px;
+                font-style: normal;
+            """)
         except Exception as e:
             # Show error
             self.resume_status.setText(f"❌ Failed to process {filename}")
-            self.resume_status.setStyleSheet("color: #ff6b6b; font-style: italic;")
+            self.resume_status.setStyleSheet("""
+                color: #ff9b9b;
+                font-style: italic;
+                font-size: 12px;
+            """)
             QMessageBox.critical(self, "Resume Error", f"Failed to summarize resume: {e}")
         finally:
             # Hide spinner and re-enable button
