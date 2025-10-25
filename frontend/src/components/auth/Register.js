@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { FiEye, FiEyeOff, FiUser, FiMail, FiLock, FiUserPlus } from 'react-icons/fi';
+import './Auth.css';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -9,6 +11,8 @@ const Register = () => {
     password: '',
     confirmPassword: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
@@ -51,82 +55,125 @@ const Register = () => {
   };
 
   return (
-    <div className="container" style={{ maxWidth: '400px', marginTop: '100px' }}>
-      <div className="card">
-        <h2 className="text-center mb-2">Register</h2>
+    <div className="auth-container">
+      <div className="auth-card">
+        <div className="auth-header">
+          <h2>Create an Account</h2>
+          <p>Join us today and start your journey</p>
+        </div>
         
         {error && (
-          <div className="alert alert-error">
+          <div className="alert-error">
             {error}
           </div>
         )}
         
-        <form onSubmit={handleSubmit}>
+        <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="username">Username</label>
-            <input
-              type="text"
-              id="username"
-              name="username"
-              value={formData.username}
-              onChange={handleChange}
-              required
-              disabled={loading}
-            />
+            <label htmlFor="username">
+              <FiUser className="inline-icon" /> Username
+            </label>
+            <div className="input-with-icon">
+              <input
+                type="text"
+                id="username"
+                name="username"
+                value={formData.username}
+                onChange={handleChange}
+                className="form-control"
+                placeholder="Choose a username"
+                required
+                disabled={loading}
+              />
+            </div>
           </div>
           
           <div className="form-group">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              disabled={loading}
-            />
+            <label htmlFor="email">
+              <FiMail className="inline-icon" /> Email
+            </label>
+            <div className="input-with-icon">
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="form-control"
+                placeholder="your@email.com"
+                required
+                disabled={loading}
+              />
+            </div>
           </div>
           
           <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              disabled={loading}
-            />
+            <label htmlFor="password">
+              <FiLock className="inline-icon" /> Password
+            </label>
+            <div className="password-wrapper">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="form-control"
+                placeholder="Create a password"
+                required
+                disabled={loading}
+              />
+              <button 
+                type="button" 
+                className="toggle-password"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex="-1"
+              >
+                {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+              </button>
+            </div>
           </div>
           
           <div className="form-group">
-            <label htmlFor="confirmPassword">Confirm Password</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              required
-              disabled={loading}
-            />
+            <label htmlFor="confirmPassword">
+              <FiLock className="inline-icon" /> Confirm Password
+            </label>
+            <div className="password-wrapper">
+              <input
+                type={showConfirmPassword ? "text" : "password"}
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="form-control"
+                placeholder="Confirm your password"
+                required
+                disabled={loading}
+              />
+              <button 
+                type="button" 
+                className="toggle-password"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                tabIndex="-1"
+              >
+                {showConfirmPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+              </button>
+            </div>
           </div>
           
           <button 
             type="submit" 
-            className="btn btn-primary" 
-            style={{ width: '100%' }}
+            className="btn btn-primary"
             disabled={loading}
           >
-            {loading ? 'Registering...' : 'Register'}
+            <FiUserPlus className="mr-2" />
+            {loading ? 'Creating account...' : 'Create Account'}
           </button>
         </form>
         
-        <p className="text-center mt-2">
-          Already have an account? <Link to="/login">Login</Link>
-        </p>
+        <div className="auth-links">
+          Already have an account? <Link to="/login">Sign in</Link>
+        </div>
       </div>
     </div>
   );

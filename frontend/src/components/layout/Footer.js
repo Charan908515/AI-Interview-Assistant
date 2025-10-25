@@ -16,17 +16,7 @@ const Footer = () => {
               Master your interview skills with AI-powered practice sessions. 
               Get real-time feedback and boost your confidence.
             </p>
-            <div className="social-links">
-              <a href="#" aria-label="Twitter" className="social-link">
-                <span>🐦</span>
-              </a>
-              <a href="#" aria-label="LinkedIn" className="social-link">
-                <span>💼</span>
-              </a>
-              <a href="#" aria-label="GitHub" className="social-link">
-                <span>🐙</span>
-              </a>
-            </div>
+            
           </div>
 
           <div className="footer-section">
@@ -49,15 +39,7 @@ const Footer = () => {
             </ul>
           </div>
 
-          <div className="footer-section">
-            <h4>Support</h4>
-            <ul className="footer-links">
-              <li><a href="#help">Help Center</a></li>
-              <li><a href="#contact">Contact Us</a></li>
-              <li><a href="#privacy">Privacy Policy</a></li>
-              <li><a href="#terms">Terms of Service</a></li>
-            </ul>
-          </div>
+          
 
           <div className="footer-section">
             <h4>Download</h4>

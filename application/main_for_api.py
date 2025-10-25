@@ -13,7 +13,7 @@ from speech_api1 import start_transcription_thread, set_backend_token
 # Load ENV
 # =========================
 load_dotenv()
-GEMINI_KEY = os.getenv("gemini_llm1")
+GEMINI_KEY = os.getenv("gemini_llm5")
 
 ASSEMBLY_KEY = os.getenv("assembly_api_key")
 OCR_API_KEY = os.getenv("ocr")
@@ -226,7 +226,7 @@ def stop_assistant():
     
     # Wait for transcription thread to finish
     if transcription_thread and transcription_thread.is_alive():
-        print("Waiting for transcription thread to stop...")
+        print("Waiting for transcription thread to stop....")
         transcription_thread.join(timeout=3.0)  # Wait up to 3 seconds
         if transcription_thread.is_alive():
             print("Warning: Transcription thread did not stop gracefully")

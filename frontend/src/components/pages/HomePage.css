@@ -29,10 +29,19 @@
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 60px;
+  grid-template-columns: 1fr; /* Single column by default */
+  gap: 40px;
   align-items: center;
-  padding: 80px 20px;
+  padding: 60px 20px;
+}
+
+/* Two columns on larger screens */
+@media (min-width: 992px) {
+  .hero .container {
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    padding: 80px 20px;
+  }
 }
 
 .hero-title {
@@ -56,11 +65,53 @@
   opacity: 0.9;
 }
 
+.hero-content {
+  max-width: 800px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 0 15px;
+}
+
+/* Adjust text alignment on larger screens */
+@media (min-width: 992px) {
+  .hero-content {
+    text-align: left;
+    padding: 0;
+  }
+}
+
 .hero-buttons {
   display: flex;
-  gap: 16px;
-  margin-bottom: 48px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 32px;
+  width: 100%;
+  max-width: 400px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Adjust button layout on larger screens */
+@media (min-width: 768px) {
+  .hero-buttons {
+    flex-direction: row;
+    justify-content: center;
+    max-width: 100%;
+    margin-bottom: 48px;
+  }
+  
+  .hero-buttons .btn {
+    min-width: 160px;
+  }
+}
+
+/* Adjust button layout on desktop */
+@media (min-width: 992px) {
+  .hero-buttons {
+    justify-content: flex-start;
+    margin-left: 0;
+    margin-right: 0;
+  }
 }
 
 .btn-large {
@@ -93,8 +144,15 @@
 
 /* App Preview */
 .hero-visual {
-  display: flex;
+  display: none; /* Hide by default on mobile */
   justify-content: center;
+}
+
+/* Show on larger screens */
+@media (min-width: 992px) {
+  .hero-visual {
+    display: flex;
+  }
 }
 
 .app-preview {

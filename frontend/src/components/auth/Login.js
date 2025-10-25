@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { FiEye, FiEyeOff, FiLogIn } from 'react-icons/fi';
+import './Auth.css';
 
 const Login = () => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
@@ -37,17 +40,20 @@ const Login = () => {
   };
 
   return (
-    <div className="container" style={{ maxWidth: '400px', marginTop: '100px' }}>
-      <div className="card">
-        <h2 className="text-center mb-2">Login</h2>
+    <div className="auth-container">
+      <div className="auth-card">
+        <div className="auth-header">
+          <h2>Welcome Back</h2>
+          <p>Sign in to your account to continue</p>
+        </div>
         
         {error && (
-          <div className="alert alert-error">
+          <div className="alert-error">
             {error}
           </div>
         )}
         
-        <form onSubmit={handleSubmit}>
+        <form className="auth-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="username">Username</label>
             <input
@@ -56,6 +62,8 @@ const Login = () => {
               name="username"
               value={formData.username}
               onChange={handleChange}
+              className="form-control"
+              placeholder="Enter your username"
               required
               disabled={loading}
             />
@@ -63,30 +71,42 @@ const Login = () => {
           
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              disabled={loading}
-            />
+            <div className="password-wrapper">
+              <input
+                type={showPassword ? "text" : "password"}
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                className="form-control"
+                placeholder="Enter your password"
+                required
+                disabled={loading}
+              />
+              <button 
+                type="button" 
+                className="toggle-password"
+                onClick={() => setShowPassword(!showPassword)}
+                tabIndex="-1"
+              >
+                {showPassword ? <FiEyeOff size={18} /> : <FiEye size={18} />}
+              </button>
+            </div>
           </div>
           
           <button 
             type="submit" 
-            className="btn btn-primary" 
-            style={{ width: '100%' }}
+            className="btn btn-primary"
             disabled={loading}
           >
-            {loading ? 'Logging in...' : 'Login'}
+            <FiLogIn className="mr-2" />
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
         
-        <p className="text-center mt-2">
-          Don't have an account? <Link to="/register">Sign up</Link>
-        </p>
+        <div className="auth-links">
+          Don't have an account? <Link to="/register">Create account</Link>
+        </div>
       </div>
     </div>
   );
