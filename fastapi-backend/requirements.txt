@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+python-dotenv
+sqlalchemy
+passlib[bcrypt]==1.7.4
+bcrypt==3.2.2
+python-jose
+python-multipart
+pydantic
+pydantic[email]
+alembic
+pytest
+pytest-asyncio
+psycopg2-binary
+sqlalchemy-cockroachdb

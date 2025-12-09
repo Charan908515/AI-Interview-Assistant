@@ -1,0 +1,31 @@
+# AI Interview Assistant Requirements
+
+# Core GUI Framework
+PyQt5>=5.15.0
+
+# AI and ML Libraries
+google-generativeai>=0.3.0
+
+# PDF Processing
+PyPDF2>=3.0.0
+
+# Audio Processing
+sounddevice>=0.4.0
+
+# WebSocket Communication
+websocket-client>=1.6.0
+
+# HTTP Requests
+requests>=2.28.0
+
+# Screen Capture
+mss>=9.0.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Keyboard Input Detection
+keyboard>=0.13.0
+
+# Threading and System
+# (Built-in modules: sys, threading, os, json, ctypes, queue, time)

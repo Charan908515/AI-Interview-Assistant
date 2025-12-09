@@ -1,0 +1,21 @@
+frontend/node_modules
+application/build
+application/dist
+application/.env
+fastapi-backend/app/.env
+application/app_creation/modules
+application/app_creation/Output
+application/app_creation/tools
+application/app_creation/vb-audio
+application/app_creation/Whisper AI
+application/app_creation/.env
+application\Charan Kumar Reddy Research resume.pdf
+frontend\public\Whisper AI.exe
+*.exe
+*.env   
+application/__pycache__
+*__pycache__
+application/token.json
+
+
+
